@@ -128,11 +128,7 @@ const AIChat = (() => {
   async function sendMessage(text) {
     if ((!text.trim() && !currentAttachment) || isLoading) return;
 
-    const apiKey = getApiKey();
-    if (!apiKey) {
-      addMessage('assistant', '⚠️ **API Key Required**\n\nPlease add your Gemini API key in **Settings** before using the AI assistant.\n\nGet a free key from [Google AI Studio](https://aistudio.google.com/app/apikey).');
-      return;
-    }
+    const apiKey = getApiKey() || null;
 
     isLoading = true;
     const sendBtn = document.getElementById('chat-send-btn');

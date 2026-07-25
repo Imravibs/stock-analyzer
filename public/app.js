@@ -353,12 +353,7 @@ const StockPulseApp = (() => {
       return;
     }
 
-    const apiKey = localStorage.getItem('stockpulse_gemini_key');
-    if (!apiKey) {
-      showToast('Add your Gemini API key in Settings', 'warning');
-      navigateTo('settings');
-      return;
-    }
+    const apiKey = localStorage.getItem('stockpulse_gemini_key') || null;
 
     const label = document.getElementById('ai-analysis-label');
     const container = document.getElementById('ai-analysis');
