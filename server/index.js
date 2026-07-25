@@ -12,6 +12,8 @@ import authRouter from './routes/auth.js';
 import screensRouter from './routes/screens.js';
 import portfolioRouter from './routes/portfolio.js';
 import { detectRedFlags } from './ai/red-flag-detector.js';
+import fetch from 'node-fetch';
+
 
 const yahooFinance = new YahooFinance({ suppressNotices: ['yahooSurvey'] });
 
@@ -73,12 +75,65 @@ function normaliseSymbol(sym) {
 let ai = null;
 
 function getAI(apiKey) {
-  if (!apiKey) return null;
-  if (!ai) {
-    ai = new GoogleGenAI({ apiKey });
+  // If we have an OpenRouter key, route requests via OpenRouter API
+  const orKey = process.env.OPENROUTER_API_KEY || (apiKey && apiKey.startsWith('sk-or-') ? apiKey : null);
+  if (orKey) {
+    return {
+      isOpenRouter: true,
+      apiKey: orKey,
+      models: {
+        async generateContent({ model, contents }) {
+          const actualModel = process.env.GEMINI_MODEL || model || 'nvidia/nemotron-4-340b-instruct';
+          let promptText = '';
+          if (typeof contents === 'string') {
+            promptText = contents;
+          } else if (Array.isArray(contents)) {
+            // handle contents structure (history, user text)
+            promptText = contents.map(c => {
+              const role = c.role === 'model' ? 'assistant' : (c.role || 'user');
+              const partsText = (c.parts || []).map(p => p.text || '').join(' ');
+              return `${role.toUpperCase()}: ${partsText}`;
+            }).join('\n\n');
+          } else if (contents && contents.text) {
+            promptText = contents.text;
+          }
+
+          const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${orKey}`,
+              'Content-Type': 'application/json',
+              'HTTP-Referer': 'https://github.com/Imravibs/stock-analyzer',
+              'X-Title': 'StockPulse Analyzer'
+            },
+            body: JSON.stringify({
+              model: actualModel,
+              messages: [{ role: 'user', content: promptText }]
+            })
+          });
+
+          if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error?.message || `OpenRouter error: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+          const text = data.choices?.[0]?.message?.content || '';
+          return { text };
+        }
+      }
+    };
+  }
+
+  // Fallback to Google Gemini
+  const geminiKey = apiKey || process.env.GEMINI_API_KEY;
+  if (!geminiKey) return null;
+  if (!ai || ai.apiKey !== geminiKey) {
+    ai = new GoogleGenAI({ apiKey: geminiKey });
   }
   return ai;
 }
+
 
 // ─────────────────────────────────────────────
 // API Routes
@@ -233,7 +288,7 @@ app.get('/api/search', async (req, res) => {
           exchange: q.exchDisp || q.exchange,
           type: q.quoteType,
         }));
-      
+
       // Merge unique
       searchResults.forEach(sr => {
         if (!results.find(r => r.symbol === sr.symbol)) {
@@ -265,7 +320,7 @@ app.get('/api/market/summary', async (req, res) => {
       const prevClose = q.regularMarketPreviousClose || price;
       const change = q.regularMarketChange || (price - prevClose);
       const changePercent = q.regularMarketChangePercent || (prevClose ? (change / prevClose) * 100 : 0);
-      
+
       return {
         symbol: q.symbol,
         name: q.symbol === '^NSEI' ? 'NIFTY 50' : q.symbol === '^BSESN' ? 'SENSEX' : 'BANK NIFTY',
@@ -522,7 +577,7 @@ app.get('/api/ratios/:symbol', async (req, res) => {
       beta: ks.beta ?? null,
       sharesOutstanding: ks.sharesOutstanding ?? null,
       float: ks.floatShares ?? null,
-      faceValue: null, 
+      faceValue: null,
     };
 
     setCache(cacheKey, response);
@@ -630,14 +685,14 @@ app.get('/api/shareholding/:symbol', async (req, res) => {
 
 // Nifty 500 popular symbols (subset for demo)
 const NIFTY500_SYMBOLS = [
-  'RELIANCE','TCS','HDFCBANK','INFY','ICICIBANK','HINDUNILVR','SBIN','BAJFINANCE',
-  'BHARTIARTL','KOTAKBANK','LT','AXISBANK','ITC','ASIANPAINT','MARUTI','SUNPHARMA',
-  'TITAN','ULTRACEMCO','NESTLEIND','WIPRO','HCLTECH','TECHM','POWERGRID','NTPC',
-  'ONGC','COALINDIA','GRASIM','JSWSTEEL','TATASTEEL','HINDALCO','ADANIENT','ADANIPORTS',
-  'M&M','DIVISLAB','DRREDDY','CIPLA','HEROMOTOCO','BAJAJFINSV','BAJAJ-AUTO','BRITANNIA',
-  'EICHERMOT','APOLLOHOSP','HDFCLIFE','SBILIFE','INDUSINDBK','PIDILITIND','NAUKRI','HAVELLS',
-  'BERGEPAINT','TORNTPHARM','MUTHOOTFIN','BOSCHLTD','GODREJCP','DABUR','MARICO','COLPAL',
-  'TATACONSUM','INDIGO','SIEMENS','ABB','ICICIGI','CHOLAFIN','MOTHERSON','GMRINFRA',
+  'RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ICICIBANK', 'HINDUNILVR', 'SBIN', 'BAJFINANCE',
+  'BHARTIARTL', 'KOTAKBANK', 'LT', 'AXISBANK', 'ITC', 'ASIANPAINT', 'MARUTI', 'SUNPHARMA',
+  'TITAN', 'ULTRACEMCO', 'NESTLEIND', 'WIPRO', 'HCLTECH', 'TECHM', 'POWERGRID', 'NTPC',
+  'ONGC', 'COALINDIA', 'GRASIM', 'JSWSTEEL', 'TATASTEEL', 'HINDALCO', 'ADANIENT', 'ADANIPORTS',
+  'M&M', 'DIVISLAB', 'DRREDDY', 'CIPLA', 'HEROMOTOCO', 'BAJAJFINSV', 'BAJAJ-AUTO', 'BRITANNIA',
+  'EICHERMOT', 'APOLLOHOSP', 'HDFCLIFE', 'SBILIFE', 'INDUSINDBK', 'PIDILITIND', 'NAUKRI', 'HAVELLS',
+  'BERGEPAINT', 'TORNTPHARM', 'MUTHOOTFIN', 'BOSCHLTD', 'GODREJCP', 'DABUR', 'MARICO', 'COLPAL',
+  'TATACONSUM', 'INDIGO', 'SIEMENS', 'ABB', 'ICICIGI', 'CHOLAFIN', 'MOTHERSON', 'GMRINFRA',
 ].map(s => `${s}.NS`);
 
 // GET /api/screener/universe — Lightweight snapshot of Nifty 500 stocks
@@ -698,8 +753,10 @@ app.post('/api/screener/run', async (req, res) => {
       change: 'changePercent',
     };
 
-    const ops = { '>': (a, b) => a > b, '<': (a, b) => a < b, '>=': (a, b) => a >= b,
-      '<=': (a, b) => a <= b, '=': (a, b) => a === b };
+    const ops = {
+      '>': (a, b) => a > b, '<': (a, b) => a < b, '>=': (a, b) => a >= b,
+      '<=': (a, b) => a <= b, '=': (a, b) => a === b
+    };
 
     const results = universe.filter(stock => {
       if (!filters || filters.length === 0) return true;
