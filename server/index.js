@@ -319,7 +319,7 @@ Provide your analysis in this exact JSON format (no markdown, just raw JSON):
 Important: Base your analysis on the actual data provided. Be balanced and honest. Include a disclaimer that this is AI-generated analysis and not financial advice.`;
 
     const response = await gemini.models.generateContent({
-      model: process.env.GEMINI_MODEL || 'gemma-2-27b-it',
+      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
       contents: prompt,
     });
 
@@ -396,8 +396,8 @@ ${context ? `Current context:\n${context}` : ''}`;
     ];
 
     const response = await gemini.models.generateContent({
-      model: process.env.GEMINI_MODEL || 'gemma-2-27b-it',
-      contents,
+      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+      contents: contents,
     });
 
     res.json({ reply: response.text || 'I couldn\'t generate a response. Please try again.' });
@@ -769,7 +769,7 @@ User input: "${text}"
 DSL:`;
 
     const response = await gemini.models.generateContent({
-      model: process.env.GEMINI_MODEL || 'gemma-2-27b-it',
+      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
       contents: prompt,
     });
 

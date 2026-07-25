@@ -139,7 +139,7 @@ Key ratios:
 Write only the risk summary, no preamble:`;
 
       const response = await gemini.models.generateContent({
-        model: process.env.GEMINI_MODEL || 'gemma-2-27b-it',
+        model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
         contents: prompt,
       });
       const aiSummary = response.text?.trim() || null;
