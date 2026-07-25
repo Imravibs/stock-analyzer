@@ -8,10 +8,15 @@ import http from 'http';
 import { Server } from 'socket.io';
 import { yahooClient } from './yahoo.js';
 import YahooFinance from 'yahoo-finance2';
+import authRouter from './routes/auth.js';
+import screensRouter from './routes/screens.js';
+import portfolioRouter from './routes/portfolio.js';
+import { detectRedFlags } from './ai/red-flag-detector.js';
 
 const yahooFinance = new YahooFinance({ suppressNotices: ['yahooSurvey'] });
 
 dotenv.config();
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,8 +32,14 @@ const io = new Server(server, {
 const PORT = process.env.PORT || 3001;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// ─── Feature Routes ───
+app.use('/api/auth', authRouter);
+app.use('/api/screens', screensRouter);
+app.use('/api/portfolio', portfolioRouter);
+
 
 // ─────────────────────────────────────────────
 // In-Memory Cache
@@ -704,6 +715,69 @@ app.post('/api/screener/run', async (req, res) => {
     res.json({ count: results.length, results });
   } catch (err) {
     console.error('Screener run error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+// Red-Flag Detector & NL-to-Query Routes
+// ─────────────────────────────────────────────
+
+// POST /api/ai/red-flags
+app.post('/api/ai/red-flags', async (req, res) => {
+  try {
+    const { symbol, ratios, financials, apiKey } = req.body;
+    if (!symbol) return res.status(400).json({ error: 'Symbol required' });
+    const gemini = getAI(apiKey || process.env.GEMINI_API_KEY);
+    const flags = await detectRedFlags(symbol, ratios, financials, gemini);
+    res.json({ flags });
+  } catch (err) {
+    console.error('Red flags error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/ai/nl-to-query — Natural Language → Screener DSL
+app.post('/api/ai/nl-to-query', async (req, res) => {
+  try {
+    const { text, apiKey } = req.body;
+    if (!text) return res.status(400).json({ error: 'Text is required' });
+    const gemini = getAI(apiKey || process.env.GEMINI_API_KEY);
+    if (!gemini) return res.status(400).json({ error: 'AI key not configured' });
+
+    const prompt = `You are a stock screener query builder for Indian equity markets.
+Convert the user's natural language description into a stock screener DSL query.
+
+Available fields (use EXACTLY as written): Price, Market Cap, PE, Dividend Yield, 52W High, 52W Low, Volume, Change, ROE, ROCE, Debt to Equity, Net Margin, Operating Margin, Revenue Growth, Earnings Growth, Beta, Book Value, Current Ratio, ROA
+
+Operators: > < >= <= = AND OR ( )
+Arithmetic on fields: field * number  (e.g. Price > 52W High * 0.85)
+
+Rules:
+- For Market Cap, use Crores × 10000000 (e.g. 1000 Cr = 10000000000)
+- Output ONLY the raw DSL query string on a single line, no explanation
+- If a concept cannot be expressed with available fields, omit it
+
+Examples:
+- "debt free smallcaps" → Debt to Equity < 0.1 AND Market Cap < 100000000000
+- "high dividend large cap" → Dividend Yield > 3 AND Market Cap > 500000000000
+- "near 52 week high momentum" → Price > 52W High * 0.9
+- "undervalued quality" → PE < 20 AND ROE > 15 AND Debt to Equity < 1
+
+User input: "${text}"
+
+DSL:`;
+
+    const response = await gemini.models.generateContent({
+      model: process.env.GEMINI_MODEL || 'gemma-2-27b-it',
+      contents: prompt,
+    });
+
+    const raw = (response.text || '').replace(/^DSL:/i, '').trim();
+    const query = raw.split('\n')[0].trim();
+    res.json({ query, original: text });
+  } catch (err) {
+    console.error('NL-to-query error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

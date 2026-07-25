@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   screener.js — Stock Screener (Phase 2)
+   screener.js — Stock Screener with proper DSL parser
    ═══════════════════════════════════════════════════════════ */
 
 const Screener = (() => {
@@ -13,12 +13,16 @@ const Screener = (() => {
 
   // ─── Preset Screens ───
   const PRESETS = [
-    { name: '📈 52-Week High', desc: 'Stocks near their 52-week high — strong momentum', filters: [{ field: 'price', op: '>=', value: 0 }], query: 'Price > 52W Low * 1.9' },
-    { name: '💰 High Dividend', desc: 'Dividend yield > 3% — income-generating stocks', filters: [{ field: 'dividendYield', op: '>', value: 3 }], query: 'Dividend Yield > 3' },
-    { name: '📉 Low P/E Value', desc: 'P/E below 15 — potentially undervalued', filters: [{ field: 'pe', op: '<', value: 15 }, { field: 'pe', op: '>', value: 0 }], query: 'PE > 0 AND PE < 15' },
-    { name: '🏆 Large Cap', desc: 'Market cap above ₹50,000 Cr — blue-chip companies', filters: [{ field: 'marketcap', op: '>', value: 5e11 }], query: 'Market Cap > 500000000000' },
-    { name: '⚡ High Growth', desc: 'Stocks up more than 2% today', filters: [{ field: 'change', op: '>', value: 2 }], query: 'Change % > 2' },
-    { name: '📉 Falling Stocks', desc: 'Stocks down more than 2% today', filters: [{ field: 'change', op: '<', value: -2 }], query: 'Change % < -2' },
+    { name: '📈 Near 52W High', query: 'Price > 52W High * 0.9' },
+    { name: '💰 High Dividend', query: 'Dividend Yield > 3' },
+    { name: '📉 Low P/E Value', query: 'PE > 0 AND PE < 15' },
+    { name: '🏆 Large Cap', query: 'Market Cap > 500000000000' },
+    { name: '🔥 High ROE', query: 'ROE > 20 AND Debt to Equity < 1' },
+    { name: '⚡ Rising Today', query: 'Change > 2' },
+    { name: '📉 Falling Today', query: 'Change < -2' },
+    { name: '🏦 Debt Free', query: 'Debt to Equity < 0.1 AND ROE > 10' },
+    { name: '💎 Quality Value', query: 'PE < 20 AND ROE > 15 AND Debt to Equity < 1' },
+    { name: '📊 High Margin', query: 'Net Margin > 20 AND Revenue Growth > 10' },
   ];
 
   function fmtPrice(v) {
@@ -49,46 +53,74 @@ const Screener = (() => {
     }
   }
 
-  // ─── Run Filters ───
-  async function runFilters(filters) {
+  // ─── Run Query using AST parser ───
+  function runQuery(queryText) {
+    if (!queryText || !queryText.trim()) {
+      currentResults = [...universe];
+    } else {
+      // Use the proper AST-based parser
+      if (typeof QueryParser !== 'undefined') {
+        currentResults = QueryParser.filter(queryText, universe);
+      } else {
+        currentResults = [...universe];
+      }
+    }
+    currentPage = 1;
+    renderResults();
+  }
+
+  // ─── NL-to-Query ───
+  async function convertNLToQuery(text) {
+    const nlBtn = document.getElementById('screener-nl-btn');
+    const nlInput = document.getElementById('screener-nl-input');
+    const qInput = document.getElementById('screener-query');
+    const preview = document.getElementById('nl-query-preview');
+
+    if (nlBtn) { nlBtn.textContent = '⏳ Converting...'; nlBtn.disabled = true; }
     try {
-      const res = await fetch('/api/screener/run', {
+      const res = await fetch('/api/ai/nl-to-query', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filters }),
+        body: JSON.stringify({ text }),
       });
       const data = await res.json();
-      currentResults = data.results || [];
-      currentPage = 1;
-      renderResults();
+      if (data.query) {
+        if (qInput) qInput.value = data.query;
+        if (preview) {
+          preview.innerHTML = `<span class="nl-preview-label">✨ Generated query:</span> <code>${data.query}</code>`;
+          preview.classList.remove('hidden');
+        }
+        // Auto-run the generated query
+        runQuery(data.query);
+      }
     } catch (e) {
-      console.error('Screener run error:', e);
+      console.error('NL-to-query error:', e);
+    } finally {
+      if (nlBtn) { nlBtn.textContent = '✨ Convert'; nlBtn.disabled = false; }
     }
   }
 
-  // ─── Parse Query Text ───
-  function parseQuery(queryText) {
-    const filters = [];
-    const parts = queryText.toUpperCase().split(/\s+AND\s+/);
-    const fieldAliases = {
-      'PRICE': 'price',
-      'PE': 'pe', 'P/E': 'pe', 'P\\/E RATIO': 'pe',
-      'MARKET CAP': 'marketcap', 'MARKETCAP': 'marketcap',
-      'DIVIDEND YIELD': 'dividend yield',
-      '52W HIGH': '52w high', '52W LOW': '52w low',
-      'VOLUME': 'volume',
-      'CHANGE': 'change', 'CHANGE %': 'change',
-    };
+  // ─── Save Screen ───
+  async function saveCurrentScreen() {
+    const token = localStorage.getItem('stockpulse_token');
+    if (!token) {
+      alert('Please log in to save screens.');
+      return;
+    }
+    const query = document.getElementById('screener-query')?.value || '';
+    if (!query) { alert('Write a query first.'); return; }
+    const name = prompt('Screen name:', 'My Screen');
+    if (!name) return;
 
-    parts.forEach(part => {
-      const m = part.trim().match(/^(.+?)\s*(>=|<=|>|<|=)\s*([\d.]+)$/);
-      if (m) {
-        const rawField = m[1].trim();
-        const field = fieldAliases[rawField] || rawField.toLowerCase();
-        filters.push({ field, op: m[2], value: parseFloat(m[3]) });
-      }
-    });
-    return filters;
+    try {
+      const res = await fetch('/api/screens/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ name, query, isPublic: false }),
+      });
+      if (res.ok) alert(`✅ Screen "${name}" saved!`);
+      else alert('Failed to save screen.');
+    } catch (e) { alert('Error saving screen.'); }
   }
 
   // ─── Render ───
@@ -96,17 +128,16 @@ const Screener = (() => {
     const el = document.getElementById('screener-presets');
     if (!el) return;
     el.innerHTML = PRESETS.map((p, i) => `
-      <div class="preset-chip" data-idx="${i}" title="${p.desc}">
-        ${p.name}
-      </div>`).join('');
+      <div class="preset-chip" data-idx="${i}" title="${p.query}">${p.name}</div>`).join('');
 
     el.querySelectorAll('.preset-chip').forEach(chip => {
       chip.addEventListener('click', () => {
         const preset = PRESETS[parseInt(chip.dataset.idx)];
-        document.getElementById('screener-query').value = preset.query;
-        runFilters(preset.filters);
+        const qInput = document.getElementById('screener-query');
+        if (qInput) qInput.value = preset.query;
         el.querySelectorAll('.preset-chip').forEach(c => c.classList.remove('active'));
         chip.classList.add('active');
+        runQuery(preset.query);
       });
     });
   }
@@ -207,31 +238,49 @@ const Screener = (() => {
   function init() {
     // Load universe on mount
     loadUniverse().then(() => {
-      // Show all stocks by default
       currentResults = universe;
       renderResults();
     });
 
     renderPresets();
 
-    // Query input handler
+    // DSL Query input
     const qInput = document.getElementById('screener-query');
     const runBtn = document.getElementById('screener-run-btn');
-
     if (runBtn && qInput) {
-      runBtn.addEventListener('click', () => {
-        const filters = parseQuery(qInput.value.trim());
-        if (filters.length === 0) {
-          currentResults = universe;
-          currentPage = 1;
-          renderResults();
-        } else {
-          runFilters(filters);
-        }
-      });
+      runBtn.addEventListener('click', () => runQuery(qInput.value.trim()));
+      qInput.addEventListener('keydown', e => { if (e.key === 'Enter') runQuery(qInput.value.trim()); });
+    }
 
-      qInput.addEventListener('keydown', e => {
-        if (e.key === 'Enter') runBtn.click();
+    // NL-to-query
+    const nlBtn = document.getElementById('screener-nl-btn');
+    const nlInput = document.getElementById('screener-nl-input');
+    if (nlBtn && nlInput) {
+      nlBtn.addEventListener('click', () => {
+        const text = nlInput.value.trim();
+        if (text) convertNLToQuery(text);
+      });
+      nlInput.addEventListener('keydown', e => { if (e.key === 'Enter') nlBtn.click(); });
+    }
+
+    // Save screen
+    const saveBtn = document.getElementById('screener-save-btn');
+    if (saveBtn) saveBtn.addEventListener('click', saveCurrentScreen);
+
+    // Export CSV
+    const exportBtn = document.getElementById('screener-export-btn');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', () => {
+        if (currentResults.length === 0) return;
+        const header = 'Symbol,Name,Price,Change%,MarketCap,PE,DivYield,52WH\n';
+        const rows = currentResults.map(s =>
+          `${s.symbol},"${s.name}",${s.price},${s.changePercent?.toFixed(2)},${s.marketCap},${s.peRatio?.toFixed(1)},${s.dividendYield?.toFixed(2)},${s.fiftyTwoWeekHigh}`
+        ).join('\n');
+        const blob = new Blob([header + rows], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url;
+        a.download = 'stockpulse-screen.csv'; a.click();
+        URL.revokeObjectURL(url);
       });
     }
   }

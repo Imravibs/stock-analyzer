@@ -850,6 +850,62 @@ Volume: ${currentQuote.volume?.toLocaleString('en-IN') || 'N/A'}`;
     // AI analyze button
     document.getElementById('btn-ai-analyze')?.addEventListener('click', runAIAnalysis);
 
+    // Red Flags button
+    document.getElementById('btn-red-flags')?.addEventListener('click', async () => {
+      if (!currentStock) return;
+      const btn = document.getElementById('btn-red-flags');
+      btn.textContent = '⏳ Scanning...';
+      btn.disabled = true;
+      try {
+        // Fetch ratios and financials to pass to the detector
+        const [ratios, financials] = await Promise.all([
+          fetch(`/api/ratios/${currentStock}`).then(r => r.json()).catch(() => null),
+          fetch(`/api/financials/${currentStock}`).then(r => r.json()).catch(() => null),
+        ]);
+        const apiKey = localStorage.getItem('stockpulse_api_key') || '';
+        const res = await fetch('/api/ai/red-flags', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ symbol: currentStock, ratios, financials, apiKey }),
+        });
+        const { flags } = await res.json();
+
+        // Show results in a panel in the chart tab
+        const panel = document.getElementById('ai-analysis');
+        const label = document.getElementById('ai-analysis-label');
+        if (panel && label) {
+          panel.style.display = 'block';
+          label.style.display = 'block';
+          label.textContent = '🚨 Risk Signal Analysis';
+          if (!flags || flags.length === 0) {
+            panel.innerHTML = '<div class="ai-text"><p>✅ No significant risk signals detected based on available data.</p></div>';
+          } else {
+            const colors = { low: '#f59e0b', medium: '#f97316', high: '#ef4444', critical: '#dc2626' };
+            panel.innerHTML = `
+              <div class="red-flags-panel">
+                ${flags.map(f => `
+                  <div class="red-flag-item" style="border-left-color:${colors[f.severity] || '#f97316'}">
+                    <div class="rf-header">
+                      <span class="rf-badge" style="background:${colors[f.severity]}20;color:${colors[f.severity]}">${f.severity.toUpperCase()}</span>
+                      <span class="rf-title">${f.title}</span>
+                    </div>
+                    <p class="rf-desc">${f.description}</p>
+                    ${f.ai_summary ? `<div class="rf-ai-summary">🤖 ${f.ai_summary}</div>` : ''}
+                  </div>`).join('')}
+                <p class="rf-disclaimer">⚠️ Risk signals are algorithmic — not financial advice. Always verify against source filings.</p>
+              </div>`;
+          }
+          // Scroll to the panel
+          panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      } catch (err) {
+        showToast('Red flag scan failed: ' + err.message, 'error');
+      } finally {
+        btn.textContent = '🚨 Red Flags';
+        btn.disabled = false;
+      }
+    });
+
     // Watchlist toggle button
     document.getElementById('btn-watchlist-toggle')?.addEventListener('click', () => {
       if (currentStock) toggleWatchlist(currentStock);
@@ -857,6 +913,7 @@ Volume: ${currentQuote.volume?.toLocaleString('en-IN') || 'N/A'}`;
 
     // AI fab button
     document.getElementById('ai-fab')?.addEventListener('click', () => navigateTo('chat'));
+
 
     // Settings
     initSettings();

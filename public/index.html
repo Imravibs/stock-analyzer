@@ -149,6 +149,9 @@
               <button class="btn btn-outline" id="btn-watchlist-toggle">
                 <span id="watchlist-star">☆</span> Watchlist
               </button>
+              <button class="btn btn-outline" id="btn-red-flags" title="Check for risk signals" style="color:#ff6b6b;border-color:rgba(255,107,107,0.3)">
+                🚨 Red Flags
+              </button>
               <button class="btn btn-primary" id="btn-ai-analyze">
                 🤖 AI Analyze
               </button>
@@ -353,15 +356,29 @@
         <!-- Query Builder -->
         <div class="screener-query-wrap glass-card">
           <div class="screener-query-label">
-            Custom Query
-            <span class="screener-query-hint">e.g. &nbsp;<code>PE &lt; 20 AND Dividend Yield &gt; 2</code></span>
+            ✨ Ask in plain English
+            <span class="screener-query-hint">e.g. <code>debt free smallcaps with high ROE</code></span>
+          </div>
+          <div class="screener-query-input-row">
+            <input type="text" id="screener-nl-input" class="form-input screener-query-input" placeholder="debt free smallcaps with rising ROE and promoter buying...">
+            <button class="btn btn-primary" id="screener-nl-btn">✨ Convert</button>
+          </div>
+          <div id="nl-query-preview" class="nl-preview hidden"></div>
+
+          <div class="screener-query-divider">— or write DSL directly —</div>
+
+          <div class="screener-query-label" style="margin-top:8px">
+            Custom DSL Query
+            <span class="screener-query-hint">e.g. <code>PE &lt; 20 AND ROE &gt; 15 AND Debt to Equity &lt; 1</code></span>
           </div>
           <div class="screener-query-input-row">
             <input type="text" id="screener-query" class="form-input screener-query-input" placeholder="PE < 20 AND Market Cap > 500000000000">
             <button class="btn btn-primary" id="screener-run-btn">▶ Run</button>
+            <button class="btn btn-outline" id="screener-save-btn" title="Save this screen">💾 Save</button>
+            <button class="btn btn-outline" id="screener-export-btn" title="Export as CSV">⬇ CSV</button>
           </div>
           <div class="screener-fields-hint">
-            Available fields: <code>Price</code> · <code>PE</code> · <code>Market Cap</code> · <code>Dividend Yield</code> · <code>52W High</code> · <code>52W Low</code> · <code>Volume</code> · <code>Change</code>
+            Fields: <code>Price</code> · <code>PE</code> · <code>Market Cap</code> · <code>Dividend Yield</code> · <code>52W High</code> · <code>52W Low</code> · <code>ROE</code> · <code>ROA</code> · <code>Debt to Equity</code> · <code>Net Margin</code> · <code>Revenue Growth</code> · <code>Beta</code> · <code>Change</code>
           </div>
         </div>
 
@@ -498,14 +515,15 @@
 
 <!-- Scripts -->
 <script src="/socket.io/socket.io.js"></script>
-<script src="api.js?v=8"></script>
-<script src="indicators.js?v=8"></script>
-<script src="charts.js?v=8"></script>
-<script src="ai-chat.js?v=8"></script>
-<script src="financials.js?v=8"></script>
-<script src="peers.js?v=8"></script>
-<script src="screener.js?v=8"></script>
-<script src="app.js?v=8"></script>
+<script src="api.js?v=9"></script>
+<script src="indicators.js?v=9"></script>
+<script src="charts.js?v=9"></script>
+<script src="ai-chat.js?v=9"></script>
+<script src="financials.js?v=9"></script>
+<script src="peers.js?v=9"></script>
+<script src="query-parser.js?v=9"></script>
+<script src="screener.js?v=9"></script>
+<script src="app.js?v=9"></script>
 
 </body>
 </html>

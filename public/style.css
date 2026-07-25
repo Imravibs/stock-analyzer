@@ -2107,3 +2107,27 @@ button { cursor: pointer; }
   color: var(--text-secondary);
   border-top: 1px solid var(--border-subtle);
 }
+
+/* ─── Red Flags Panel ─── */
+.red-flags-panel { padding: 4px 0; }
+.red-flag-item {
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  border-left: 4px solid #f97316;
+  background: rgba(255, 107, 107, 0.05);
+}
+.rf-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.rf-badge { font-size: 10px; font-weight: 700; letter-spacing: 0.6px; padding: 2px 8px; border-radius: 6px; flex-shrink: 0; }
+.rf-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.rf-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin: 0 0 8px; }
+.rf-ai-summary { font-size: 13px; color: var(--color-accent); line-height: 1.5; padding: 8px 12px; background: rgba(0, 242, 254, 0.05); border-radius: 8px; border: 1px solid rgba(0, 242, 254, 0.1); }
+.rf-disclaimer { font-size: 11px; color: var(--text-dim); margin: 8px 0 0; text-align: center; }
+
+/* ─── NL-to-Query Preview ─── */
+.nl-preview { padding: 10px 14px; margin-top: 8px; background: rgba(0, 242, 254, 0.05); border: 1px solid rgba(0, 242, 254, 0.15); border-radius: 8px; font-size: 13px; color: var(--text-secondary); }
+.nl-preview.hidden { display: none; }
+.nl-preview-label { font-weight: 600; color: var(--color-accent); }
+.nl-preview code { color: var(--text-primary); background: var(--bg-elevated); padding: 2px 6px; border-radius: 4px; }
+.screener-query-divider { text-align: center; color: var(--text-dim); font-size: 12px; margin: 12px 0 8px; display: flex; align-items: center; gap: 8px; }
+.screener-query-divider::before, .screener-query-divider::after { content: ''; flex: 1; height: 1px; background: var(--border-subtle); }
