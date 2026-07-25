@@ -715,7 +715,7 @@ const StockPulseApp = (() => {
         await API.setApiKey(key);
         localStorage.setItem('stockpulse_gemini_key', key);
         if (status) { status.textContent = '✅ API key saved successfully!'; status.className = 'settings-status success'; }
-        showToast('Gemini API key configured!', 'success');
+        showToast('API key configured!', 'success');
       } catch (err) {
         if (status) { status.textContent = `❌ Error: ${err.message}`; status.className = 'settings-status error'; }
       }
