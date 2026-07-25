@@ -117,38 +117,22 @@ const QueryParser = (() => {
       // percent
       if (src[i] === '%') { tokens.push({ type: TOKEN.PERCENT, value: '%' }); i++; continue; }
 
-      // number
-      if (/[\d.]/.test(src[i])) {
-        let num = '';
-        while (i < src.length && /[\d.]/.test(src[i])) { num += src[i++]; }
-        tokens.push({ type: TOKEN.NUMBER, value: parseFloat(num) });
-        continue;
-      }
-
-      // word/identifier — could be AND, OR, or a field name
-      if (/[a-zA-Z_\/]/.test(src[i])) {
+      // word/identifier — could be AND, OR, or a field name (may start with letters or digits, like "52w high")
+      if (/[a-zA-Z0-9_\/]/.test(src[i])) {
         let word = '';
         const wordStart = i;
-        // consume the word, including spaces for multi-word field names
-        // We'll try to match longest known field name first
         let j = i;
         while (j < src.length && /[a-zA-Z0-9_\/\s%]/.test(src[j])) {
-          // stop at operators or parens
-          if (['(', ')', '<', '>', '=', '!', '*', '+'].includes(src[j])) break;
+          if (['(', ')', '<', '>', '=', '!', '*', '+', '-'].includes(src[j])) break;
           word += src[j++];
         }
         word = word.trim();
 
-        const upper = word.toUpperCase();
-        if (upper === 'AND') { tokens.push({ type: TOKEN.AND, value: 'AND' }); i = j; continue; }
-        if (upper === 'OR') { tokens.push({ type: TOKEN.OR, value: 'OR' }); i = j; continue; }
-
-        // Try to match a field name (longest match, case-insensitive)
+        // Check if this matches a known field name (longest match, case-insensitive)
         const lower = word.toLowerCase().trim();
         let matchedField = null;
         let matchedLen = 0;
 
-        // Sort by length desc for longest match
         const sortedFields = Object.keys(FIELD_MAP).sort((a, b) => b.length - a.length);
         for (const f of sortedFields) {
           if (lower.startsWith(f)) {
@@ -160,17 +144,29 @@ const QueryParser = (() => {
 
         if (matchedField) {
           tokens.push({ type: TOKEN.FIELD, value: FIELD_MAP[matchedField], raw: matchedField });
-          // only advance by the matched field length in the original string
+          // advance i past the actual characters in the source string that formed the matched field
+          let charsToConsume = matchedLen;
           i = wordStart;
-          let consumed = 0;
-          let skipSpaces = 0;
-          while (consumed < matchedLen || skipSpaces < matchedLen) {
-            if (i >= src.length) break;
-            if (/\s/.test(src[i])) { i++; continue; }
+          while (charsToConsume > 0 && i < src.length) {
+            if (!/\s/.test(src[i])) {
+              charsToConsume--;
+            }
             i++;
-            consumed++;
-            if (consumed >= matchedLen) break;
           }
+          continue;
+        }
+
+        const upper = word.toUpperCase();
+        if (upper === 'AND') { tokens.push({ type: TOKEN.AND, value: 'AND' }); i = j; continue; }
+        if (upper === 'OR') { tokens.push({ type: TOKEN.OR, value: 'OR' }); i = j; continue; }
+
+        // If it's not a field and it starts with a number, parse it as a number
+        if (/^\d/.test(word)) {
+          let numStr = '';
+          let k = wordStart;
+          while (k < src.length && /[\d.]/.test(src[k])) { numStr += src[k++]; }
+          tokens.push({ type: TOKEN.NUMBER, value: parseFloat(numStr) });
+          i = k;
           continue;
         }
 
@@ -178,6 +174,7 @@ const QueryParser = (() => {
         i = j;
         continue;
       }
+
 
       i++; // skip unknown chars
     }
@@ -245,17 +242,8 @@ const QueryParser = (() => {
     }
 
     function parseValueExpr() {
-      if (peek().type === TOKEN.NUMBER) {
-        const num = consume().value;
-        // consume optional % sign
-        if (peek().type === TOKEN.PERCENT) {
-          consume();
-          return { type: 'NUMBER', value: num, isPercent: true };
-        }
-        return { type: 'NUMBER', value: num };
-      }
+      // First check for Field with optional arithmetic (like "52W High * 0.9")
       if (peek().type === TOKEN.FIELD) {
-        // value could also be a field reference (e.g. "52W High * 0.85")
         const f = consume().value;
         const node = { type: 'FIELD', name: f };
         if (peek().type === TOKEN.ARITH) {
@@ -266,6 +254,14 @@ const QueryParser = (() => {
           }
         }
         return node;
+      }
+      if (peek().type === TOKEN.NUMBER) {
+        const num = consume().value;
+        if (peek().type === TOKEN.PERCENT) {
+          consume();
+          return { type: 'NUMBER', value: num, isPercent: true };
+        }
+        return { type: 'NUMBER', value: num };
       }
       return { type: 'NUMBER', value: 0 };
     }
