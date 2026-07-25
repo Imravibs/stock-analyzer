@@ -2131,3 +2131,94 @@ button { cursor: pointer; }
 .nl-preview code { color: var(--text-primary); background: var(--bg-elevated); padding: 2px 6px; border-radius: 4px; }
 .screener-query-divider { text-align: center; color: var(--text-dim); font-size: 12px; margin: 12px 0 8px; display: flex; align-items: center; gap: 8px; }
 .screener-query-divider::before, .screener-query-divider::after { content: ''; flex: 1; height: 1px; background: var(--border-subtle); }
+
+/* ═══════════════════════════════════════════
+   Mobile Screen Compatibility Tweaks
+   ═══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Fix grid layouts on mobile */
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .popular-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .ratios-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  /* Make tab bars horizontal-scrollable instead of squishing */
+  .company-tab-bar {
+    display: flex;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    gap: 8px;
+    padding-bottom: 8px;
+  }
+  .ctab {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  /* Adjust stock details headers */
+  .stock-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+    width: 100%;
+  }
+  .stock-actions button {
+    flex: 1;
+    min-width: 90px;
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+
+  /* Adjust search inputs */
+  .search-input {
+    width: 100% !important;
+    font-size: 13px;
+  }
+
+  /* Make tables responsive */
+  .fin-table-wrap, .peers-table-wrap, .screener-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Adjust dialogs and chat containers */
+  .chat-container {
+    height: calc(100vh - 120px) !important;
+  }
+  .msg-bubble {
+    max-width: 92% !important;
+  }
+
+  .screener-query-input-row {
+    flex-direction: column;
+    gap: 6px;
+  }
+  .screener-query-input-row button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-row {
+    grid-template-columns: 1fr !important;
+  }
+  .ratios-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .stock-title-row {
+    align-items: flex-start;
+  }
+}
