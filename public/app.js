@@ -58,6 +58,8 @@ const StockPulseApp = (() => {
   }
 
   // ─── Navigation ───
+  let screenerInited = false;
+
   function navigateTo(view, data) {
     currentView = view;
 
@@ -78,7 +80,83 @@ const StockPulseApp = (() => {
       loadStock(data.symbol);
     } else if (view === 'watchlist') {
       renderWatchlistFull();
+    } else if (view === 'screener') {
+      if (!screenerInited && typeof Screener !== 'undefined') {
+        Screener.init();
+        screenerInited = true;
+      }
     }
+  }
+
+  // ─── Company Tab Bar ───
+  let activeCompanyTab = 'chart';
+  let financialsData = null;
+  let ratiosData = null;
+  let peersData = null;
+  let shareholdingData = null;
+
+  function initCompanyTabBar() {
+    document.getElementById('company-tab-bar')?.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.ctab');
+      if (!btn) return;
+      const tab = btn.dataset.ctab;
+      if (!tab || tab === activeCompanyTab) return;
+
+      document.querySelectorAll('.ctab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.ctab-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById(`ctab-${tab}`)?.classList.add('active');
+      activeCompanyTab = tab;
+
+      if (!currentStock) return;
+
+      // Lazy-load panel data
+      if ((tab === 'ratios' || tab === 'pros-cons') && !ratiosData) {
+        try {
+          document.getElementById('ratios-content').innerHTML = '<div class="fin-loading">Loading ratios...</div>';
+          document.getElementById('pros-cons-content').innerHTML = '<div class="fin-loading">Generating insights...</div>';
+          ratiosData = await (await fetch(`/api/ratios/${currentStock}`)).json();
+        } catch(e) { ratiosData = null; }
+      }
+      if (tab === 'ratios') {
+        document.getElementById('ratios-content').innerHTML = Financials.renderRatios(ratiosData);
+      }
+      if (tab === 'pros-cons') {
+        if (!financialsData) {
+          try { financialsData = await (await fetch(`/api/financials/${currentStock}`)).json(); } catch(e) { financialsData = null; }
+        }
+        document.getElementById('pros-cons-content').innerHTML = Financials.renderProsCons(ratiosData, financialsData);
+      }
+
+      if (tab === 'peers' && !peersData) {
+        document.getElementById('peers-content').innerHTML = '<div class="fin-loading">Loading peers...</div>';
+        try { peersData = await (await fetch(`/api/peers/${currentStock}`)).json(); } catch(e) { peersData = []; }
+        const peersSym = currentStock.replace('.NS', '').replace('.BO', '');
+        document.getElementById('peers-content').innerHTML = Peers.renderPeers(peersData, peersSym);
+        // Click to navigate
+        document.getElementById('peers-content')?.querySelectorAll('[data-symbol]').forEach(row => {
+          row.addEventListener('click', () => {
+            const s = row.dataset.symbol;
+            if (s) loadStock(`${s}.NS`);
+          });
+        });
+      }
+
+      if ((tab === 'quarterly' || tab === 'annual' || tab === 'balance' || tab === 'cashflow') && !financialsData) {
+        document.getElementById(`${tab}-content`).innerHTML = '<div class="fin-loading">Loading financials...</div>';
+        try { financialsData = await (await fetch(`/api/financials/${currentStock}`)).json(); } catch(e) { financialsData = null; }
+      }
+      if (tab === 'quarterly') document.getElementById('quarterly-content').innerHTML = Financials.renderQuarterlyPL(financialsData);
+      if (tab === 'annual') document.getElementById('annual-content').innerHTML = Financials.renderAnnualPL(financialsData);
+      if (tab === 'balance') document.getElementById('balance-content').innerHTML = Financials.renderBalanceSheet(financialsData);
+      if (tab === 'cashflow') document.getElementById('cashflow-content').innerHTML = Financials.renderCashFlow(financialsData);
+
+      if (tab === 'shareholding' && !shareholdingData) {
+        document.getElementById('shareholding-content').innerHTML = '<div class="fin-loading">Loading shareholding...</div>';
+        try { shareholdingData = await (await fetch(`/api/shareholding/${currentStock}`)).json(); } catch(e) { shareholdingData = null; }
+        document.getElementById('shareholding-content').innerHTML = Financials.renderShareholding(shareholdingData);
+      }
+    });
   }
 
   // ─── Search ───
@@ -192,6 +270,17 @@ const StockPulseApp = (() => {
   // ─── Load Stock ───
   async function loadStock(symbol) {
     currentStock = symbol;
+    // Reset cached deep-dive data when switching stocks
+    financialsData = null;
+    ratiosData = null;
+    peersData = null;
+    shareholdingData = null;
+    // Reset tab to chart
+    document.querySelectorAll('.ctab').forEach(b => b.classList.remove('active'));
+    document.querySelector('.ctab[data-ctab="chart"]')?.classList.add('active');
+    document.querySelectorAll('.ctab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('ctab-chart')?.classList.add('active');
+    activeCompanyTab = 'chart';
 
     // Update UI with loading state
     document.getElementById('stock-name').textContent = symbol.replace('.NS', '').replace('.BO', '');
@@ -775,6 +864,9 @@ Volume: ${currentQuote.volume?.toLocaleString('en-IN') || 'N/A'}`;
     // Init AI Chat
     AIChat.init();
 
+    // Init company tab bar
+    initCompanyTabBar();
+
     // Load dashboard data
     loadMarketSummary();
     renderDashboardWatchlist();
@@ -787,11 +879,11 @@ Volume: ${currentQuote.volume?.toLocaleString('en-IN') || 'N/A'}`;
     // Update market status every minute
     setInterval(updateMarketStatus, 60000);
 
-    console.log('🚀 StockPulse AI initialized');
+    console.log('🚀 StockPulse AI v2 initialized — Screener.in Edition');
   }
 
-  // Expose for AI chat context
-  window.StockPulseApp = { getCurrentStockContext };
+  // Expose for AI chat context and screener navigation
+  window.StockPulseApp = { getCurrentStockContext, loadStock: (sym) => { navigateTo('stock'); loadStock(sym); } };
 
   // Run on DOM ready
   if (document.readyState === 'loading') {

@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="AI-powered stock analyzer for Indian markets (NSE/BSE). Real-time charts, technical indicators, AI sentiment analysis, and smart buy/sell signals.">
+  <meta name="description" content="StockPulse AI — Indian stock analysis platform. Real-time prices, 10-year financials, stock screener, peer comparison, AI analysis & chat.">
   <title>StockPulse AI — Indian Market Analyzer</title>
-  <link rel="stylesheet" href="style.css?v=7">
+  <link rel="stylesheet" href="style.css?v=8">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -35,6 +35,10 @@
       </a>
       <a href="#" class="nav-item" data-view="stock" id="nav-stock">
         <span class="nav-icon">📈</span> Stock Detail
+      </a>
+      <a href="#" class="nav-item" data-view="screener" id="nav-screener">
+        <span class="nav-icon">🔎</span> Screener
+        <span class="nav-badge">NEW</span>
       </a>
 
       <div class="nav-group-label">Portfolio</div>
@@ -160,85 +164,212 @@
           </div>
         </div>
 
-        <!-- Chart Section -->
-        <div class="chart-section glass-card">
-          <div class="chart-toolbar">
-            <div class="range-tabs" id="range-tabs">
-              <button data-range="1d">1D</button>
-              <button data-range="5d">5D</button>
-              <button class="active" data-range="1mo">1M</button>
-              <button data-range="3mo">3M</button>
-              <button data-range="6mo">6M</button>
-              <button data-range="1y">1Y</button>
-              <button data-range="5y">5Y</button>
-            </div>
-            <div class="indicator-toggles">
-              <label class="indicator-chip"><input type="checkbox" id="toggle-sma" checked> SMA</label>
-              <label class="indicator-chip"><input type="checkbox" id="toggle-ema"> EMA</label>
-              <label class="indicator-chip"><input type="checkbox" id="toggle-bb"> Bollinger</label>
-            </div>
-          </div>
-          <div class="chart-wrapper">
-            <div id="price-chart" class="tv-chart"></div>
-          </div>
-          <div class="chart-wrapper chart-wrapper-sm">
-            <div class="oscillator-label">RSI (14)</div>
-            <div id="rsi-chart" class="tv-chart"></div>
-          </div>
-          <div class="chart-wrapper chart-wrapper-sm">
-            <div class="oscillator-label">MACD (12,26,9)</div>
-            <div id="macd-chart" class="tv-chart"></div>
-          </div>
+        <!-- ── Company Tab Bar ── -->
+        <div class="company-tab-bar" id="company-tab-bar">
+          <button class="ctab active" data-ctab="chart">📈 Chart</button>
+          <button class="ctab" data-ctab="ratios">📐 Ratios</button>
+          <button class="ctab" data-ctab="pros-cons">✅ Pros/Cons</button>
+          <button class="ctab" data-ctab="peers">👥 Peers</button>
+          <button class="ctab" data-ctab="quarterly">📅 Quarterly</button>
+          <button class="ctab" data-ctab="annual">📊 Annual P&L</button>
+          <button class="ctab" data-ctab="balance">🏦 Balance Sheet</button>
+          <button class="ctab" data-ctab="cashflow">💸 Cash Flow</button>
+          <button class="ctab" data-ctab="shareholding">🤝 Shareholding</button>
         </div>
 
-        <!-- Key Stats -->
-        <div class="stats-row">
-          <div class="mini-stat glass-card">
-            <span class="mini-stat-label">Day Low</span>
-            <span class="mini-stat-value" id="stat-day-low">—</span>
-          </div>
-          <div class="mini-stat glass-card">
-            <span class="mini-stat-label">Day High</span>
-            <span class="mini-stat-value" id="stat-day-high">—</span>
-          </div>
-          <div class="mini-stat glass-card">
-            <span class="mini-stat-label">Volume</span>
-            <span class="mini-stat-value" id="stat-volume">—</span>
-          </div>
-          <div class="mini-stat glass-card">
-            <span class="mini-stat-label">52W Low</span>
-            <span class="mini-stat-value" id="stat-52w-low">—</span>
-          </div>
-          <div class="mini-stat glass-card">
-            <span class="mini-stat-label">52W High</span>
-            <span class="mini-stat-value" id="stat-52w-high">—</span>
-          </div>
-          <div class="mini-stat glass-card">
-            <span class="mini-stat-label">Prev Close</span>
-            <span class="mini-stat-value" id="stat-prev-close">—</span>
-          </div>
-        </div>
+        <!-- ── Tab Panels ── -->
 
-        <!-- Signal Dashboard -->
-        <div class="section-label">Technical Signals</div>
-        <div class="signal-dashboard glass-card" id="signal-dashboard">
-          <div class="signal-meter">
-            <div class="signal-gauge" id="signal-gauge">
-              <div class="gauge-fill" id="gauge-fill"></div>
+        <!-- Chart Panel -->
+        <div class="ctab-panel active" id="ctab-chart">
+
+          <!-- Chart Section -->
+          <div class="chart-section glass-card">
+            <div class="chart-toolbar">
+              <div class="range-tabs" id="range-tabs">
+                <button data-range="1d">1D</button>
+                <button data-range="5d">5D</button>
+                <button class="active" data-range="1mo">1M</button>
+                <button data-range="3mo">3M</button>
+                <button data-range="6mo">6M</button>
+                <button data-range="1y">1Y</button>
+                <button data-range="5y">5Y</button>
+              </div>
+              <div class="indicator-toggles">
+                <label class="indicator-chip"><input type="checkbox" id="toggle-sma" checked> SMA</label>
+                <label class="indicator-chip"><input type="checkbox" id="toggle-ema"> EMA</label>
+                <label class="indicator-chip"><input type="checkbox" id="toggle-bb"> Bollinger</label>
+              </div>
             </div>
-            <div class="signal-verdict" id="signal-verdict">—</div>
-            <div class="signal-confidence" id="signal-confidence">Analyzing...</div>
+            <div class="chart-wrapper">
+              <div id="price-chart" class="tv-chart"></div>
+            </div>
+            <div class="chart-wrapper chart-wrapper-sm">
+              <div class="oscillator-label">RSI (14)</div>
+              <div id="rsi-chart" class="tv-chart"></div>
+            </div>
+            <div class="chart-wrapper chart-wrapper-sm">
+              <div class="oscillator-label">MACD (12,26,9)</div>
+              <div id="macd-chart" class="tv-chart"></div>
+            </div>
           </div>
-          <div class="signal-breakdown" id="signal-breakdown">
+
+          <!-- Key Stats -->
+          <div class="stats-row">
+            <div class="mini-stat glass-card">
+              <span class="mini-stat-label">Day Low</span>
+              <span class="mini-stat-value" id="stat-day-low">—</span>
+            </div>
+            <div class="mini-stat glass-card">
+              <span class="mini-stat-label">Day High</span>
+              <span class="mini-stat-value" id="stat-day-high">—</span>
+            </div>
+            <div class="mini-stat glass-card">
+              <span class="mini-stat-label">Volume</span>
+              <span class="mini-stat-value" id="stat-volume">—</span>
+            </div>
+            <div class="mini-stat glass-card">
+              <span class="mini-stat-label">52W Low</span>
+              <span class="mini-stat-value" id="stat-52w-low">—</span>
+            </div>
+            <div class="mini-stat glass-card">
+              <span class="mini-stat-label">52W High</span>
+              <span class="mini-stat-value" id="stat-52w-high">—</span>
+            </div>
+            <div class="mini-stat glass-card">
+              <span class="mini-stat-label">Prev Close</span>
+              <span class="mini-stat-value" id="stat-prev-close">—</span>
+            </div>
+          </div>
+
+          <!-- Signal Dashboard -->
+          <div class="section-label">Technical Signals</div>
+          <div class="signal-dashboard glass-card" id="signal-dashboard">
+            <div class="signal-meter">
+              <div class="signal-gauge" id="signal-gauge">
+                <div class="gauge-fill" id="gauge-fill"></div>
+              </div>
+              <div class="signal-verdict" id="signal-verdict">—</div>
+              <div class="signal-confidence" id="signal-confidence">Analyzing...</div>
+            </div>
+            <div class="signal-breakdown" id="signal-breakdown">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- AI Analysis -->
+          <div class="section-label" id="ai-analysis-label" style="display:none">AI Analysis</div>
+          <div class="ai-analysis glass-card" id="ai-analysis" style="display:none">
             <!-- Populated by JS -->
           </div>
         </div>
 
-        <!-- AI Analysis -->
-        <div class="section-label" id="ai-analysis-label" style="display:none">AI Analysis</div>
-        <div class="ai-analysis glass-card" id="ai-analysis" style="display:none">
-          <!-- Populated by JS -->
+        <!-- Ratios Panel -->
+        <div class="ctab-panel" id="ctab-ratios">
+          <div class="ctab-section-header">
+            <h3>📐 Key Ratios</h3>
+            <p>Valuation, profitability, and efficiency metrics</p>
+          </div>
+          <div id="ratios-content"><div class="fin-loading">Select a stock to view ratios</div></div>
         </div>
+
+        <!-- Pros/Cons Panel -->
+        <div class="ctab-panel" id="ctab-pros-cons">
+          <div class="ctab-section-header">
+            <h3>✅ Strengths & Concerns</h3>
+            <p>Auto-generated analysis based on financial ratios</p>
+          </div>
+          <div id="pros-cons-content"><div class="fin-loading">Select a stock to view insights</div></div>
+        </div>
+
+        <!-- Peers Panel -->
+        <div class="ctab-panel" id="ctab-peers">
+          <div class="ctab-section-header">
+            <h3>👥 Peer Comparison</h3>
+            <p>Similar companies in the same sector</p>
+          </div>
+          <div id="peers-content"><div class="fin-loading">Select a stock to view peers</div></div>
+        </div>
+
+        <!-- Quarterly P&L Panel -->
+        <div class="ctab-panel" id="ctab-quarterly">
+          <div class="ctab-section-header">
+            <h3>📅 Quarterly Results</h3>
+            <p>Last 8 quarters of financial performance</p>
+          </div>
+          <div id="quarterly-content"><div class="fin-loading">Select a stock to view quarterly results</div></div>
+        </div>
+
+        <!-- Annual P&L Panel -->
+        <div class="ctab-panel" id="ctab-annual">
+          <div class="ctab-section-header">
+            <h3>📊 Annual Profit & Loss</h3>
+            <p>Revenue, profits, and EPS — annual history</p>
+          </div>
+          <div id="annual-content"><div class="fin-loading">Select a stock to view annual P&L</div></div>
+        </div>
+
+        <!-- Balance Sheet Panel -->
+        <div class="ctab-panel" id="ctab-balance">
+          <div class="ctab-section-header">
+            <h3>🏦 Balance Sheet</h3>
+            <p>Assets, liabilities, and shareholder equity</p>
+          </div>
+          <div id="balance-content"><div class="fin-loading">Select a stock to view balance sheet</div></div>
+        </div>
+
+        <!-- Cash Flow Panel -->
+        <div class="ctab-panel" id="ctab-cashflow">
+          <div class="ctab-section-header">
+            <h3>💸 Cash Flow Statement</h3>
+            <p>Operating, investing, and financing activities</p>
+          </div>
+          <div id="cashflow-content"><div class="fin-loading">Select a stock to view cash flow</div></div>
+        </div>
+
+        <!-- Shareholding Panel -->
+        <div class="ctab-panel" id="ctab-shareholding">
+          <div class="ctab-section-header">
+            <h3>🤝 Shareholding Pattern</h3>
+            <p>Institutional and insider ownership breakdown</p>
+          </div>
+          <div id="shareholding-content"><div class="fin-loading">Select a stock to view shareholding</div></div>
+        </div>
+
+      </section>
+
+      <!-- ===== SCREENER VIEW ===== -->
+      <section class="view" id="screener-view">
+        <div class="view-header">
+          <h2>🔎 Stock Screener</h2>
+          <p class="view-desc">Filter stocks from the Nifty 500 using custom conditions. Click any result to open the full company page.</p>
+        </div>
+
+        <!-- Preset Chips -->
+        <div class="screener-presets-wrap glass-card">
+          <div class="screener-presets-label">Popular Screens</div>
+          <div id="screener-presets" class="screener-presets"></div>
+        </div>
+
+        <!-- Query Builder -->
+        <div class="screener-query-wrap glass-card">
+          <div class="screener-query-label">
+            Custom Query
+            <span class="screener-query-hint">e.g. &nbsp;<code>PE &lt; 20 AND Dividend Yield &gt; 2</code></span>
+          </div>
+          <div class="screener-query-input-row">
+            <input type="text" id="screener-query" class="form-input screener-query-input" placeholder="PE < 20 AND Market Cap > 500000000000">
+            <button class="btn btn-primary" id="screener-run-btn">▶ Run</button>
+          </div>
+          <div class="screener-fields-hint">
+            Available fields: <code>Price</code> · <code>PE</code> · <code>Market Cap</code> · <code>Dividend Yield</code> · <code>52W High</code> · <code>52W Low</code> · <code>Volume</code> · <code>Change</code>
+          </div>
+        </div>
+
+        <!-- Results -->
+        <div class="screener-results-header">
+          <span id="screener-count" class="screener-count">Loading...</span>
+        </div>
+        <div id="screener-results" class="screener-results glass-card"></div>
       </section>
 
       <!-- ===== WATCHLIST VIEW ===== -->
@@ -367,11 +498,14 @@
 
 <!-- Scripts -->
 <script src="/socket.io/socket.io.js"></script>
-<script src="api.js?v=7"></script>
-<script src="indicators.js?v=7"></script>
-<script src="charts.js?v=7"></script>
-<script src="ai-chat.js?v=7"></script>
-<script src="app.js?v=7"></script>
+<script src="api.js?v=8"></script>
+<script src="indicators.js?v=8"></script>
+<script src="charts.js?v=8"></script>
+<script src="ai-chat.js?v=8"></script>
+<script src="financials.js?v=8"></script>
+<script src="peers.js?v=8"></script>
+<script src="screener.js?v=8"></script>
+<script src="app.js?v=8"></script>
 
 </body>
 </html>

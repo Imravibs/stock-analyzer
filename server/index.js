@@ -405,10 +405,314 @@ app.post('/api/config/apikey', (req, res) => {
   res.json({ success: true, message: 'API key configured for this session' });
 });
 
+// ─────────────────────────────────────────────
+// Phase 1: Company Deep-Dive Routes
+// ─────────────────────────────────────────────
+
+// GET /api/financials/:symbol — P&L, Balance Sheet, Cash Flow (5-10 years)
+app.get('/api/financials/:symbol', async (req, res) => {
+  try {
+    const symbol = normaliseSymbol(req.params.symbol);
+    const cacheKey = `financials:${symbol}`;
+    const cached = getCached(cacheKey, 6 * 60 * 60 * 1000); // 6 hours
+    if (cached) return res.json(cached);
+
+    const summary = await yahooFinance.quoteSummary(symbol, {
+      modules: [
+        'incomeStatementHistory',
+        'incomeStatementHistoryQuarterly',
+        'balanceSheetHistory',
+        'cashflowStatementHistory',
+      ],
+    });
+
+    const annualPL = (summary.incomeStatementHistory?.incomeStatementHistory || []).map(s => ({
+      date: s.endDate,
+      revenue: s.totalRevenue?.raw ?? null,
+      grossProfit: s.grossProfit?.raw ?? null,
+      ebit: s.ebit?.raw ?? null,
+      netIncome: s.netIncome?.raw ?? null,
+      eps: s.basicEps?.raw ?? null,
+    })).reverse();
+
+    const quarterlyPL = (summary.incomeStatementHistoryQuarterly?.incomeStatementHistory || []).map(s => ({
+      date: s.endDate,
+      revenue: s.totalRevenue?.raw ?? null,
+      grossProfit: s.grossProfit?.raw ?? null,
+      netIncome: s.netIncome?.raw ?? null,
+      eps: s.basicEps?.raw ?? null,
+    })).reverse();
+
+    const balanceSheet = (summary.balanceSheetHistory?.balanceSheetStatements || []).map(s => ({
+      date: s.endDate,
+      totalAssets: s.totalAssets?.raw ?? null,
+      totalLiab: s.totalLiab?.raw ?? null,
+      totalStockholderEquity: s.totalStockholderEquity?.raw ?? null,
+      totalCurrentAssets: s.totalCurrentAssets?.raw ?? null,
+      totalCurrentLiabilities: s.totalCurrentLiabilities?.raw ?? null,
+      longTermDebt: s.longTermDebt?.raw ?? null,
+      cash: s.cash?.raw ?? null,
+    })).reverse();
+
+    const cashFlow = (summary.cashflowStatementHistory?.cashflowStatements || []).map(s => ({
+      date: s.endDate,
+      operatingCashflow: s.totalCashFromOperatingActivities?.raw ?? null,
+      investingCashflow: s.totalCashflowsFromInvestingActivities?.raw ?? null,
+      financingCashflow: s.totalCashFromFinancingActivities?.raw ?? null,
+      freeCashflow: s.freeCashFlow?.raw ?? null,
+      capitalExpenditures: s.capitalExpenditures?.raw ?? null,
+    })).reverse();
+
+    const response = { annualPL, quarterlyPL, balanceSheet, cashFlow };
+    setCache(cacheKey, response);
+    res.json(response);
+  } catch (err) {
+    console.error('Financials error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/ratios/:symbol — Key valuation & efficiency ratios
+app.get('/api/ratios/:symbol', async (req, res) => {
+  try {
+    const symbol = normaliseSymbol(req.params.symbol);
+    const cacheKey = `ratios:${symbol}`;
+    const cached = getCached(cacheKey, 30 * 60 * 1000); // 30 min
+    if (cached) return res.json(cached);
+
+    const [summary, quote] = await Promise.all([
+      yahooFinance.quoteSummary(symbol, {
+        modules: ['defaultKeyStatistics', 'financialData', 'summaryDetail'],
+      }),
+      yahooFinance.quote(symbol),
+    ]);
+
+    const ks = summary.defaultKeyStatistics || {};
+    const fd = summary.financialData || {};
+    const sd = summary.summaryDetail || {};
+
+    const response = {
+      marketCap: quote.marketCap ?? null,
+      peRatio: sd.trailingPE?.raw ?? ks.forwardPE?.raw ?? null,
+      pbRatio: ks.priceToBook?.raw ?? null,
+      evToEbitda: ks.enterpriseToEbitda?.raw ?? null,
+      bookValue: ks.bookValue?.raw ?? null,
+      dividendYield: sd.dividendYield?.raw ? (sd.dividendYield.raw * 100).toFixed(2) : null,
+      roe: fd.returnOnEquity?.raw ? (fd.returnOnEquity.raw * 100).toFixed(2) : null,
+      roa: fd.returnOnAssets?.raw ? (fd.returnOnAssets.raw * 100).toFixed(2) : null,
+      debtToEquity: fd.debtToEquity?.raw ?? null,
+      currentRatio: fd.currentRatio?.raw ?? null,
+      quickRatio: fd.quickRatio?.raw ?? null,
+      grossMargin: fd.grossMargins?.raw ? (fd.grossMargins.raw * 100).toFixed(2) : null,
+      operatingMargin: fd.operatingMargins?.raw ? (fd.operatingMargins.raw * 100).toFixed(2) : null,
+      netMargin: fd.profitMargins?.raw ? (fd.profitMargins.raw * 100).toFixed(2) : null,
+      revenueGrowth: fd.revenueGrowth?.raw ? (fd.revenueGrowth.raw * 100).toFixed(2) : null,
+      earningsGrowth: fd.earningsGrowth?.raw ? (fd.earningsGrowth.raw * 100).toFixed(2) : null,
+      beta: ks.beta?.raw ?? null,
+      sharesOutstanding: ks.sharesOutstanding?.raw ?? null,
+      float: ks.floatShares?.raw ?? null,
+      faceValue: null, // not available in Yahoo Finance
+    };
+
+    setCache(cacheKey, response);
+    res.json(response);
+  } catch (err) {
+    console.error('Ratios error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/peers/:symbol — Peer / competitor stocks
+app.get('/api/peers/:symbol', async (req, res) => {
+  try {
+    const symbol = normaliseSymbol(req.params.symbol);
+    const cacheKey = `peers:${symbol}`;
+    const cached = getCached(cacheKey, 60 * 60 * 1000); // 1 hour
+    if (cached) return res.json(cached);
+
+    // Get similar stocks from Yahoo Finance recommendations
+    const recs = await yahooFinance.recommendationsBySymbol(symbol);
+    const peers = (recs.recommendedSymbols || [])
+      .map(r => r.symbol)
+      .filter(s => s.endsWith('.NS') || s.endsWith('.BO'))
+      .slice(0, 8);
+
+    if (peers.length === 0) return res.json([]);
+
+    const peerQuotes = await yahooFinance.quote(peers, { return: 'array' });
+
+    const response = peerQuotes
+      .filter(q => q && q.regularMarketPrice)
+      .map(q => {
+        const price = q.regularMarketPrice || 0;
+        const prevClose = q.regularMarketPreviousClose || price;
+        const change = q.regularMarketChange || (price - prevClose);
+        const changePct = q.regularMarketChangePercent || (prevClose ? (change / prevClose) * 100 : 0);
+        return {
+          symbol: q.symbol,
+          name: q.shortName || q.longName || q.symbol,
+          price: parseFloat(price.toFixed(2)),
+          change: parseFloat(change.toFixed(2)),
+          changePercent: parseFloat(changePct.toFixed(2)),
+          marketCap: q.marketCap ?? null,
+          peRatio: q.trailingPE ?? null,
+          fiftyTwoWeekHigh: q.fiftyTwoWeekHigh ?? null,
+          fiftyTwoWeekLow: q.fiftyTwoWeekLow ?? null,
+          volume: q.regularMarketVolume ?? 0,
+        };
+      });
+
+    setCache(cacheKey, response);
+    res.json(response);
+  } catch (err) {
+    console.error('Peers error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/shareholding/:symbol — Institutional & insider ownership
+app.get('/api/shareholding/:symbol', async (req, res) => {
+  try {
+    const symbol = normaliseSymbol(req.params.symbol);
+    const cacheKey = `shareholding:${symbol}`;
+    const cached = getCached(cacheKey, 60 * 60 * 1000); // 1 hour
+    if (cached) return res.json(cached);
+
+    const summary = await yahooFinance.quoteSummary(symbol, {
+      modules: ['majorHoldersBreakdown', 'institutionOwnership', 'insiderHolders'],
+    });
+
+    const mh = summary.majorHoldersBreakdown || {};
+    const inst = (summary.institutionOwnership?.ownershipList || []).slice(0, 10).map(h => ({
+      name: h.organization,
+      pctHeld: h.pctHeld?.raw ? (h.pctHeld.raw * 100).toFixed(2) : null,
+      shares: h.position?.raw ?? null,
+      date: h.reportDate,
+    }));
+
+    const insiders = (summary.insiderHolders?.holders || []).slice(0, 5).map(h => ({
+      name: h.name,
+      relation: h.relation,
+      shares: h.positionDirect?.raw ?? null,
+      pctHeld: null,
+    }));
+
+    const response = {
+      institutionsPercent: mh.institutionsPercentHeld?.raw ? (mh.institutionsPercentHeld.raw * 100).toFixed(2) : null,
+      insidersPercent: mh.insidersPercentHeld?.raw ? (mh.insidersPercentHeld.raw * 100).toFixed(2) : null,
+      institutionsFloatPercent: mh.institutionsFloatPercentHeld?.raw ? (mh.institutionsFloatPercentHeld.raw * 100).toFixed(2) : null,
+      topInstitutions: inst,
+      insiders,
+    };
+
+    setCache(cacheKey, response);
+    res.json(response);
+  } catch (err) {
+    console.error('Shareholding error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+// Phase 2: Stock Screener Routes
+// ─────────────────────────────────────────────
+
+// Nifty 500 popular symbols (subset for demo)
+const NIFTY500_SYMBOLS = [
+  'RELIANCE','TCS','HDFCBANK','INFY','ICICIBANK','HINDUNILVR','SBIN','BAJFINANCE',
+  'BHARTIARTL','KOTAKBANK','LT','AXISBANK','ITC','ASIANPAINT','MARUTI','SUNPHARMA',
+  'TITAN','ULTRACEMCO','NESTLEIND','WIPRO','HCLTECH','TECHM','POWERGRID','NTPC',
+  'ONGC','COALINDIA','GRASIM','JSWSTEEL','TATASTEEL','HINDALCO','ADANIENT','ADANIPORTS',
+  'M&M','DIVISLAB','DRREDDY','CIPLA','HEROMOTOCO','BAJAJFINSV','BAJAJ-AUTO','BRITANNIA',
+  'EICHERMOT','APOLLOHOSP','HDFCLIFE','SBILIFE','INDUSINDBK','PIDILITIND','NAUKRI','HAVELLS',
+  'BERGEPAINT','TORNTPHARM','MUTHOOTFIN','BOSCHLTD','GODREJCP','DABUR','MARICO','COLPAL',
+  'TATACONSUM','INDIGO','SIEMENS','ABB','ICICIGI','CHOLAFIN','MOTHERSON','GMRINFRA',
+].map(s => `${s}.NS`);
+
+// GET /api/screener/universe — Lightweight snapshot of Nifty 500 stocks
+app.get('/api/screener/universe', async (req, res) => {
+  try {
+    const cacheKey = 'screener:universe';
+    const cached = getCached(cacheKey, 15 * 60 * 1000); // 15 min
+    if (cached) return res.json(cached);
+
+    // Batch in chunks of 10 to avoid rate limits
+    const CHUNK = 10;
+    const results = [];
+    for (let i = 0; i < NIFTY500_SYMBOLS.length; i += CHUNK) {
+      const chunk = NIFTY500_SYMBOLS.slice(i, i + CHUNK);
+      try {
+        const quotes = await yahooFinance.quote(chunk, { return: 'array' });
+        quotes.forEach(q => {
+          if (!q || !q.regularMarketPrice) return;
+          results.push({
+            symbol: q.symbol.replace('.NS', '').replace('.BO', ''),
+            name: q.shortName || q.longName || q.symbol,
+            price: q.regularMarketPrice ?? 0,
+            changePercent: q.regularMarketChangePercent ?? 0,
+            marketCap: q.marketCap ?? null,
+            peRatio: q.trailingPE ?? null,
+            dividendYield: q.dividendYield ? (q.dividendYield * 100) : null,
+            fiftyTwoWeekHigh: q.fiftyTwoWeekHigh ?? null,
+            fiftyTwoWeekLow: q.fiftyTwoWeekLow ?? null,
+            volume: q.regularMarketVolume ?? 0,
+            sector: q.sector ?? null,
+          });
+        });
+      } catch (e) { /* skip failed chunk */ }
+    }
+
+    setCache(cacheKey, results);
+    res.json(results);
+  } catch (err) {
+    console.error('Screener universe error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/screener/run — Run a filter query against the universe
+app.post('/api/screener/run', async (req, res) => {
+  try {
+    const { filters } = req.body; // [{ field, op, value }]
+    const cacheKey = 'screener:universe';
+    let universe = getCached(cacheKey, 15 * 60 * 1000);
+
+    if (!universe) {
+      return res.status(503).json({ error: 'Universe not loaded yet. Call /api/screener/universe first.' });
+    }
+
+    const fieldMap = {
+      price: 'price', marketcap: 'marketCap', pe: 'peRatio', 'dividend yield': 'dividendYield',
+      '52w high': 'fiftyTwoWeekHigh', '52w low': 'fiftyTwoWeekLow', volume: 'volume',
+      change: 'changePercent',
+    };
+
+    const ops = { '>': (a, b) => a > b, '<': (a, b) => a < b, '>=': (a, b) => a >= b,
+      '<=': (a, b) => a <= b, '=': (a, b) => a === b };
+
+    const results = universe.filter(stock => {
+      if (!filters || filters.length === 0) return true;
+      return filters.every(f => {
+        const key = fieldMap[f.field?.toLowerCase()] || f.field;
+        const val = stock[key];
+        if (val == null) return false;
+        const fn = ops[f.op];
+        return fn ? fn(parseFloat(val), parseFloat(f.value)) : false;
+      });
+    });
+
+    res.json({ count: results.length, results });
+  } catch (err) {
+    console.error('Screener run error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Fallback: serve index.html for SPA routing
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
+
 
 // ─────────────────────────────────────────────
 // WebSocket & Yahoo Integration
