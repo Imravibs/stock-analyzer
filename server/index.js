@@ -504,25 +504,25 @@ app.get('/api/ratios/:symbol', async (req, res) => {
 
     const response = {
       marketCap: quote.marketCap ?? null,
-      peRatio: sd.trailingPE?.raw ?? ks.forwardPE?.raw ?? null,
-      pbRatio: ks.priceToBook?.raw ?? null,
-      evToEbitda: ks.enterpriseToEbitda?.raw ?? null,
-      bookValue: ks.bookValue?.raw ?? null,
-      dividendYield: sd.dividendYield?.raw ? (sd.dividendYield.raw * 100).toFixed(2) : null,
-      roe: fd.returnOnEquity?.raw ? (fd.returnOnEquity.raw * 100).toFixed(2) : null,
-      roa: fd.returnOnAssets?.raw ? (fd.returnOnAssets.raw * 100).toFixed(2) : null,
-      debtToEquity: fd.debtToEquity?.raw ?? null,
-      currentRatio: fd.currentRatio?.raw ?? null,
-      quickRatio: fd.quickRatio?.raw ?? null,
-      grossMargin: fd.grossMargins?.raw ? (fd.grossMargins.raw * 100).toFixed(2) : null,
-      operatingMargin: fd.operatingMargins?.raw ? (fd.operatingMargins.raw * 100).toFixed(2) : null,
-      netMargin: fd.profitMargins?.raw ? (fd.profitMargins.raw * 100).toFixed(2) : null,
-      revenueGrowth: fd.revenueGrowth?.raw ? (fd.revenueGrowth.raw * 100).toFixed(2) : null,
-      earningsGrowth: fd.earningsGrowth?.raw ? (fd.earningsGrowth.raw * 100).toFixed(2) : null,
-      beta: ks.beta?.raw ?? null,
-      sharesOutstanding: ks.sharesOutstanding?.raw ?? null,
-      float: ks.floatShares?.raw ?? null,
-      faceValue: null, // not available in Yahoo Finance
+      peRatio: sd.trailingPE ?? ks.forwardPE ?? null,
+      pbRatio: ks.priceToBook ?? null,
+      evToEbitda: ks.enterpriseToEbitda ?? null,
+      bookValue: ks.bookValue ?? null,
+      dividendYield: sd.dividendYield ? (sd.dividendYield * 100).toFixed(2) : null,
+      roe: fd.returnOnEquity ? (fd.returnOnEquity * 100).toFixed(2) : null,
+      roa: fd.returnOnAssets ? (fd.returnOnAssets * 100).toFixed(2) : null,
+      debtToEquity: fd.debtToEquity ?? null,
+      currentRatio: fd.currentRatio ?? null,
+      quickRatio: fd.quickRatio ?? null,
+      grossMargin: fd.grossMargins ? (fd.grossMargins * 100).toFixed(2) : null,
+      operatingMargin: fd.operatingMargins ? (fd.operatingMargins * 100).toFixed(2) : null,
+      netMargin: fd.profitMargins ? (fd.profitMargins * 100).toFixed(2) : null,
+      revenueGrowth: fd.revenueGrowth ? (fd.revenueGrowth * 100).toFixed(2) : null,
+      earningsGrowth: fd.earningsGrowth ? (fd.earningsGrowth * 100).toFixed(2) : null,
+      beta: ks.beta ?? null,
+      sharesOutstanding: ks.sharesOutstanding ?? null,
+      float: ks.floatShares ?? null,
+      faceValue: null, 
     };
 
     setCache(cacheKey, response);
@@ -596,22 +596,22 @@ app.get('/api/shareholding/:symbol', async (req, res) => {
     const mh = summary.majorHoldersBreakdown || {};
     const inst = (summary.institutionOwnership?.ownershipList || []).slice(0, 10).map(h => ({
       name: h.organization,
-      pctHeld: h.pctHeld?.raw ? (h.pctHeld.raw * 100).toFixed(2) : null,
-      shares: h.position?.raw ?? null,
+      pctHeld: h.pctHeld ? (h.pctHeld * 100).toFixed(2) : null,
+      shares: h.position ?? null,
       date: h.reportDate,
     }));
 
     const insiders = (summary.insiderHolders?.holders || []).slice(0, 5).map(h => ({
       name: h.name,
       relation: h.relation,
-      shares: h.positionDirect?.raw ?? null,
+      shares: h.positionDirect ?? null,
       pctHeld: null,
     }));
 
     const response = {
-      institutionsPercent: mh.institutionsPercentHeld?.raw ? (mh.institutionsPercentHeld.raw * 100).toFixed(2) : null,
-      insidersPercent: mh.insidersPercentHeld?.raw ? (mh.insidersPercentHeld.raw * 100).toFixed(2) : null,
-      institutionsFloatPercent: mh.institutionsFloatPercentHeld?.raw ? (mh.institutionsFloatPercentHeld.raw * 100).toFixed(2) : null,
+      institutionsPercent: mh.institutionsPercentHeld ? (mh.institutionsPercentHeld * 100).toFixed(2) : null,
+      insidersPercent: mh.insidersPercentHeld ? (mh.insidersPercentHeld * 100).toFixed(2) : null,
+      institutionsFloatPercent: mh.institutionsFloatPercentHeld ? (mh.institutionsFloatPercentHeld * 100).toFixed(2) : null,
       topInstitutions: inst,
       insiders,
     };
