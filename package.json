@@ -1,0 +1,10 @@
+{
+  "name": "stock-analyzer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Stock Analyzer Web App & Backend",
+  "scripts": {
+    "start": "node server/index.js",
+    "postinstall": "cd server && npm install"
+  }
+}
