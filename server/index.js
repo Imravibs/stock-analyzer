@@ -439,39 +439,39 @@ app.get('/api/financials/:symbol', async (req, res) => {
 
     const annualPL = (summary.incomeStatementHistory?.incomeStatementHistory || []).map(s => ({
       date: s.endDate,
-      revenue: s.totalRevenue?.raw ?? null,
-      grossProfit: s.grossProfit?.raw ?? null,
-      ebit: s.ebit?.raw ?? null,
-      netIncome: s.netIncome?.raw ?? null,
-      eps: s.basicEps?.raw ?? null,
+      revenue: s.totalRevenue ?? null,
+      grossProfit: s.grossProfit ?? null,
+      ebit: s.ebit ?? null,
+      netIncome: s.netIncome ?? null,
+      eps: s.basicEps ?? null,
     })).reverse();
 
     const quarterlyPL = (summary.incomeStatementHistoryQuarterly?.incomeStatementHistory || []).map(s => ({
       date: s.endDate,
-      revenue: s.totalRevenue?.raw ?? null,
-      grossProfit: s.grossProfit?.raw ?? null,
-      netIncome: s.netIncome?.raw ?? null,
-      eps: s.basicEps?.raw ?? null,
+      revenue: s.totalRevenue ?? null,
+      grossProfit: s.grossProfit ?? null,
+      netIncome: s.netIncome ?? null,
+      eps: s.basicEps ?? null,
     })).reverse();
 
     const balanceSheet = (summary.balanceSheetHistory?.balanceSheetStatements || []).map(s => ({
       date: s.endDate,
-      totalAssets: s.totalAssets?.raw ?? null,
-      totalLiab: s.totalLiab?.raw ?? null,
-      totalStockholderEquity: s.totalStockholderEquity?.raw ?? null,
-      totalCurrentAssets: s.totalCurrentAssets?.raw ?? null,
-      totalCurrentLiabilities: s.totalCurrentLiabilities?.raw ?? null,
-      longTermDebt: s.longTermDebt?.raw ?? null,
-      cash: s.cash?.raw ?? null,
+      totalAssets: s.totalAssets ?? null,
+      totalLiab: s.totalLiab ?? null,
+      totalStockholderEquity: s.totalStockholderEquity ?? null,
+      totalCurrentAssets: s.totalCurrentAssets ?? null,
+      totalCurrentLiabilities: s.totalCurrentLiabilities ?? null,
+      longTermDebt: s.longTermDebt ?? null,
+      cash: s.cash ?? null,
     })).reverse();
 
     const cashFlow = (summary.cashflowStatementHistory?.cashflowStatements || []).map(s => ({
       date: s.endDate,
-      operatingCashflow: s.totalCashFromOperatingActivities?.raw ?? null,
-      investingCashflow: s.totalCashflowsFromInvestingActivities?.raw ?? null,
-      financingCashflow: s.totalCashFromFinancingActivities?.raw ?? null,
-      freeCashflow: s.freeCashFlow?.raw ?? null,
-      capitalExpenditures: s.capitalExpenditures?.raw ?? null,
+      operatingCashflow: s.totalCashFromOperatingActivities ?? null,
+      investingCashflow: s.totalCashflowsFromInvestingActivities ?? null,
+      financingCashflow: s.totalCashFromFinancingActivities ?? null,
+      freeCashflow: s.freeCashFlow ?? null,
+      capitalExpenditures: s.capitalExpenditures ?? null,
     })).reverse();
 
     const response = { annualPL, quarterlyPL, balanceSheet, cashFlow };
