@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AI-powered stock analyzer for Indian markets (NSE/BSE). Real-time charts, technical indicators, AI sentiment analysis, and smart buy/sell signals.">
+  <title>StockPulse AI — Indian Market Analyzer</title>
+  <link rel="stylesheet" href="style.css?v=7">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+  <script src="https://cdn.jsdelivr.net/npm/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- ========== SIDEBAR ========== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 32 32" fill="none"><path d="M4 24L12 14L18 20L28 8" stroke="url(#g1)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="28" cy="8" r="3" fill="#00d4ff"/><defs><linearGradient id="g1" x1="4" y1="24" x2="28" y2="8"><stop stop-color="#00d4ff"/><stop offset="1" stop-color="#7c4dff"/></linearGradient></defs></svg>
+      </div>
+      <div>
+        <h1>StockPulse</h1>
+        <span class="brand-tag">AI Agent</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-group-label">Markets</div>
+      <a href="#" class="nav-item active" data-view="dashboard" id="nav-dashboard">
+        <span class="nav-icon">📊</span> Dashboard
+      </a>
+      <a href="#" class="nav-item" data-view="stock" id="nav-stock">
+        <span class="nav-icon">📈</span> Stock Detail
+      </a>
+
+      <div class="nav-group-label">Portfolio</div>
+      <a href="#" class="nav-item" data-view="watchlist" id="nav-watchlist">
+        <span class="nav-icon">⭐</span> Watchlist
+        <span class="watchlist-count" id="watchlist-count">0</span>
+      </a>
+
+      <div class="nav-group-label">AI Tools</div>
+      <a href="#" class="nav-item" data-view="chat" id="nav-chat">
+        <span class="nav-icon">🤖</span> AI Assistant
+      </a>
+
+      <div class="nav-group-label">System</div>
+      <a href="#" class="nav-item" data-view="settings" id="nav-settings">
+        <span class="nav-icon">⚙️</span> Settings
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="market-status" id="market-status">
+        <span class="status-dot"></span>
+        <span class="status-text">Market Closed</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Sidebar Overlay (Mobile) -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <!-- ========== MAIN CONTENT ========== -->
+  <main class="main">
+
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-btn" id="menu-btn" aria-label="Toggle menu">
+          <span></span><span></span><span></span>
+        </button>
+        <div class="search-wrapper" id="search-wrapper">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="search-input" class="search-input" placeholder="Search NSE stocks... (e.g., Reliance, TCS)" autocomplete="off">
+          <kbd class="search-shortcut">/</kbd>
+          <div class="search-results" id="search-results"></div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <button class="ai-fab" id="ai-fab" title="Ask AI">
+          <span>🤖</span> Ask AI
+        </button>
+      </div>
+    </header>
+
+    <!-- Content Area -->
+    <div class="content" id="content">
+
+      <!-- ===== DASHBOARD VIEW ===== -->
+      <section class="view active" id="dashboard-view">
+
+        <!-- Market Indices -->
+        <div class="section-label">Market Indices</div>
+        <div class="indices-strip" id="indices-strip">
+          <div class="index-card skeleton-card">
+            <div class="skeleton skeleton-text" style="width:80px"></div>
+            <div class="skeleton skeleton-text-lg" style="width:120px"></div>
+            <div class="skeleton skeleton-text" style="width:60px"></div>
+          </div>
+          <div class="index-card skeleton-card">
+            <div class="skeleton skeleton-text" style="width:80px"></div>
+            <div class="skeleton skeleton-text-lg" style="width:120px"></div>
+            <div class="skeleton skeleton-text" style="width:60px"></div>
+          </div>
+          <div class="index-card skeleton-card">
+            <div class="skeleton skeleton-text" style="width:80px"></div>
+            <div class="skeleton skeleton-text-lg" style="width:120px"></div>
+            <div class="skeleton skeleton-text" style="width:60px"></div>
+          </div>
+        </div>
+
+        <!-- Watchlist Quick View -->
+        <div class="section-label">
+          <span>Watchlist</span>
+          <button class="btn-text" data-view="watchlist">View All →</button>
+        </div>
+        <div class="watchlist-grid" id="dashboard-watchlist">
+          <div class="empty-watchlist-hint" id="empty-watchlist-hint">
+            <span>⭐</span>
+            <p>Search for stocks above and add them to your watchlist to see live prices here.</p>
+          </div>
+        </div>
+
+        <!-- Popular Stocks -->
+        <div class="section-label">Popular Nifty 50 Stocks</div>
+        <div class="popular-grid" id="popular-grid">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+      <!-- ===== STOCK DETAIL VIEW ===== -->
+      <section class="view" id="stock-view">
+        <div class="stock-header" id="stock-header">
+          <div class="stock-title-row">
+            <div>
+              <h2 class="stock-name" id="stock-name">Select a Stock</h2>
+              <span class="stock-symbol" id="stock-symbol">Use the search bar above</span>
+            </div>
+            <div class="stock-actions">
+              <button class="btn btn-outline" id="btn-watchlist-toggle">
+                <span id="watchlist-star">☆</span> Watchlist
+              </button>
+              <button class="btn btn-primary" id="btn-ai-analyze">
+                🤖 AI Analyze
+              </button>
+            </div>
+          </div>
+          <div class="stock-price-row" id="stock-price-row">
+            <span class="stock-price" id="stock-price">—</span>
+            <span class="stock-change neutral" id="stock-change">—</span>
+          </div>
+          <div class="stock-meta" id="stock-meta">
+            <span id="stock-exchange">—</span>
+            <span id="stock-market-state">—</span>
+          </div>
+        </div>
+
+        <!-- Chart Section -->
+        <div class="chart-section glass-card">
+          <div class="chart-toolbar">
+            <div class="range-tabs" id="range-tabs">
+              <button data-range="1d">1D</button>
+              <button data-range="5d">5D</button>
+              <button class="active" data-range="1mo">1M</button>
+              <button data-range="3mo">3M</button>
+              <button data-range="6mo">6M</button>
+              <button data-range="1y">1Y</button>
+              <button data-range="5y">5Y</button>
+            </div>
+            <div class="indicator-toggles">
+              <label class="indicator-chip"><input type="checkbox" id="toggle-sma" checked> SMA</label>
+              <label class="indicator-chip"><input type="checkbox" id="toggle-ema"> EMA</label>
+              <label class="indicator-chip"><input type="checkbox" id="toggle-bb"> Bollinger</label>
+            </div>
+          </div>
+          <div class="chart-wrapper">
+            <div id="price-chart" class="tv-chart"></div>
+          </div>
+          <div class="chart-wrapper chart-wrapper-sm">
+            <div class="oscillator-label">RSI (14)</div>
+            <div id="rsi-chart" class="tv-chart"></div>
+          </div>
+          <div class="chart-wrapper chart-wrapper-sm">
+            <div class="oscillator-label">MACD (12,26,9)</div>
+            <div id="macd-chart" class="tv-chart"></div>
+          </div>
+        </div>
+
+        <!-- Key Stats -->
+        <div class="stats-row">
+          <div class="mini-stat glass-card">
+            <span class="mini-stat-label">Day Low</span>
+            <span class="mini-stat-value" id="stat-day-low">—</span>
+          </div>
+          <div class="mini-stat glass-card">
+            <span class="mini-stat-label">Day High</span>
+            <span class="mini-stat-value" id="stat-day-high">—</span>
+          </div>
+          <div class="mini-stat glass-card">
+            <span class="mini-stat-label">Volume</span>
+            <span class="mini-stat-value" id="stat-volume">—</span>
+          </div>
+          <div class="mini-stat glass-card">
+            <span class="mini-stat-label">52W Low</span>
+            <span class="mini-stat-value" id="stat-52w-low">—</span>
+          </div>
+          <div class="mini-stat glass-card">
+            <span class="mini-stat-label">52W High</span>
+            <span class="mini-stat-value" id="stat-52w-high">—</span>
+          </div>
+          <div class="mini-stat glass-card">
+            <span class="mini-stat-label">Prev Close</span>
+            <span class="mini-stat-value" id="stat-prev-close">—</span>
+          </div>
+        </div>
+
+        <!-- Signal Dashboard -->
+        <div class="section-label">Technical Signals</div>
+        <div class="signal-dashboard glass-card" id="signal-dashboard">
+          <div class="signal-meter">
+            <div class="signal-gauge" id="signal-gauge">
+              <div class="gauge-fill" id="gauge-fill"></div>
+            </div>
+            <div class="signal-verdict" id="signal-verdict">—</div>
+            <div class="signal-confidence" id="signal-confidence">Analyzing...</div>
+          </div>
+          <div class="signal-breakdown" id="signal-breakdown">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- AI Analysis -->
+        <div class="section-label" id="ai-analysis-label" style="display:none">AI Analysis</div>
+        <div class="ai-analysis glass-card" id="ai-analysis" style="display:none">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+      <!-- ===== WATCHLIST VIEW ===== -->
+      <section class="view" id="watchlist-view">
+        <div class="view-header">
+          <h2>⭐ Your Watchlist</h2>
+          <p class="view-desc">Monitor your favorite NSE stocks with live prices and quick analysis.</p>
+        </div>
+        <div class="watchlist-full-grid" id="watchlist-full-grid">
+          <div class="empty-state" id="watchlist-empty">
+            <div class="empty-icon">⭐</div>
+            <h3>Your watchlist is empty</h3>
+            <p>Search for stocks using the search bar above and click the star to add them here.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== AI CHAT VIEW ===== -->
+      <section class="view" id="chat-view">
+        <div class="chat-container">
+          <div class="chat-header">
+            <div>
+              <h2>🤖 StockPulse AI Assistant</h2>
+              <p class="view-desc">Ask me anything about Indian stocks, markets, and investing.</p>
+            </div>
+            <button class="btn btn-outline btn-sm" id="btn-clear-chat">Clear Chat</button>
+          </div>
+
+          <!-- Quick Prompts -->
+          <div class="quick-prompts" id="quick-prompts">
+            <button class="prompt-chip" data-prompt="Analyze Reliance Industries and give me a buy/sell recommendation">📊 Analyze Reliance</button>
+            <button class="prompt-chip" data-prompt="Compare TCS vs Infosys — which is a better buy right now?">⚖️ TCS vs Infosys</button>
+            <button class="prompt-chip" data-prompt="What are the top 5 Nifty 50 stocks to invest in for long term?">🏆 Top Nifty 50 picks</button>
+            <button class="prompt-chip" data-prompt="Explain RSI and MACD indicators in simple terms">📚 Explain indicators</button>
+            <button class="prompt-chip" data-prompt="What are the key risks in the Indian stock market right now?">⚠️ Market risks</button>
+            <button class="prompt-chip" data-prompt="Suggest a diversified portfolio of 10 Indian stocks under ₹1000">💼 Portfolio under ₹1K</button>
+          </div>
+
+          <!-- Chat Messages -->
+          <div class="chat-messages" id="chat-messages">
+            <div class="chat-msg assistant">
+              <div class="msg-avatar">🤖</div>
+              <div class="msg-bubble">
+                <p>Namaste! I'm <strong>StockPulse AI</strong>, your assistant for Indian stock market analysis. I can help you with:</p>
+                <ul>
+                  <li>📊 Stock analysis and buy/sell recommendations</li>
+                  <li>📈 Technical indicator explanations</li>
+                  <li>⚖️ Stock comparisons</li>
+                  <li>💡 Investment ideas and portfolio suggestions</li>
+                </ul>
+                <p><em>Note: My analysis is AI-generated and not financial advice. Always do your own research.</em></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chat Input -->
+          <div class="chat-input-area">
+            <div id="chat-file-preview" class="chat-file-preview hidden">
+              <!-- File chip will be injected here -->
+            </div>
+            <div class="chat-input-wrapper">
+              <label for="chat-file-input" class="chat-attach-btn" title="Attach image, PDF, or text file">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+              </label>
+              <input type="file" id="chat-file-input" class="hidden" accept="image/*,application/pdf,text/plain,text/csv,text/markdown" />
+              <input type="text" id="chat-input" class="chat-input" placeholder="Ask about stocks, or upload a chart/report...">
+              <button class="chat-send-btn" id="chat-send-btn" title="Send">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== SETTINGS VIEW ===== -->
+      <section class="view" id="settings-view">
+        <div class="view-header">
+          <h2>⚙️ Settings</h2>
+          <p class="view-desc">Configure your API keys and preferences.</p>
+        </div>
+
+        <div class="settings-grid">
+          <div class="settings-card glass-card">
+            <h3>🔑 Gemini API Key</h3>
+            <p>Required for AI analysis and chat features. Get your free key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Google AI Studio</a>.</p>
+            <div class="settings-input-group">
+              <input type="password" id="settings-api-key" class="form-input" placeholder="Enter your Gemini API key...">
+              <button class="btn btn-primary" id="btn-save-api-key">Save Key</button>
+            </div>
+            <div class="settings-status" id="api-key-status"></div>
+          </div>
+
+          <div class="settings-card glass-card">
+            <h3>📊 Default Watchlist</h3>
+            <p>Pre-populate your watchlist with popular Nifty 50 stocks.</p>
+            <button class="btn btn-outline" id="btn-load-defaults">Load Default Stocks</button>
+          </div>
+
+          <div class="settings-card glass-card">
+            <h3>🔄 Auto-Refresh</h3>
+            <p>Automatically refresh stock prices at regular intervals.</p>
+            <div class="toggle-row">
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-auto-refresh" checked>
+                <span class="toggle-slider"></span>
+              </label>
+              <span>Refresh every 30 seconds</span>
+            </div>
+          </div>
+
+          <div class="settings-card glass-card">
+            <h3>ℹ️ About</h3>
+            <p><strong>StockPulse AI</strong> — AI-powered Indian stock market analyzer.</p>
+            <p class="text-muted">Built with Express.js, Chart.js, and Google Gemini AI. Stock data via Yahoo Finance (near real-time, may be delayed ~15 minutes for NSE/BSE).</p>
+            <p class="text-muted" style="margin-top:8px">⚠️ This app is for informational/educational purposes only. Not financial advice.</p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Scripts -->
+<script src="/socket.io/socket.io.js"></script>
+<script src="api.js?v=7"></script>
+<script src="indicators.js?v=7"></script>
+<script src="charts.js?v=7"></script>
+<script src="ai-chat.js?v=7"></script>
+<script src="app.js?v=7"></script>
+
+</body>
+</html>
