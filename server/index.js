@@ -308,7 +308,7 @@ Provide your analysis in this exact JSON format (no markdown, just raw JSON):
 Important: Base your analysis on the actual data provided. Be balanced and honest. Include a disclaimer that this is AI-generated analysis and not financial advice.`;
 
     const response = await gemini.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
       contents: prompt,
     });
 
@@ -385,7 +385,7 @@ ${context ? `Current context:\n${context}` : ''}`;
     ];
 
     const response = await gemini.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
       contents,
     });
 
